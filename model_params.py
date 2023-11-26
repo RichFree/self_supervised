@@ -58,6 +58,11 @@ class ModelParams:
     covariance_loss_weight: float = 1.0
     variance_loss_epsilon: float = 1e-04
 
+    # EigReg
+    use_eig_loss: bool = False
+    eigen_loss_weight: float = 0.005
+    eigen_diff_weight: float = 50
+
     # MLP parameters
     projection_mlp_layers: int = 2
     prediction_mlp_layers: int = 0
@@ -84,6 +89,21 @@ class ModelParams:
 VICRegParams = partial(
     ModelParams,
     use_vicreg_loss=True,
+    loss_type="vic",
+    use_lagging_model=False,
+    use_unit_sphere_projection=False,
+    use_negative_examples_from_queue=False,
+    optimizer_name="lars",
+    exclude_matching_parameters_from_lars=[".bias", ".bn"],
+    projection_mlp_layers=3,
+    final_lr_schedule_value=0.002,
+    mlp_normalization="bn",
+    lars_warmup_epochs=10,
+)
+
+EigRegParams = partial(
+    ModelParams,
+    use_eig_loss=True,
     loss_type="vic",
     use_lagging_model=False,
     use_unit_sphere_projection=False,

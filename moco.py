@@ -233,7 +233,7 @@ class SelfSupervisedMethod(pl.LightningModule):
         # variance loss
         std_z_a = torch.sqrt(z_a.var(dim=0) + self.hparams.variance_loss_epsilon)
         std_z_b = torch.sqrt(z_b.var(dim=0) + self.hparams.variance_loss_epsilon)
-        loss_v_a = torch.mean(F.relu(1 - std_z_a))
+        loss_v_a = torch.mean(F.relu(1 - std_z_a)) # differentiable max
         loss_v_b = torch.mean(F.relu(1 - std_z_b))
         loss_var = loss_v_a + loss_v_b
 
@@ -260,6 +260,61 @@ class SelfSupervisedMethod(pl.LightningModule):
             "loss_covariance": weighted_cov,
         }
 
+    def _get_eig_loss(self, z_a, z_b, batch_idx):
+        assert z_a.shape == z_b.shape and len(z_a.shape) == 2
+
+        # invariance loss
+        loss_inv = F.mse_loss(z_a, z_b)
+        
+        # covariance loss
+        N, D = z_a.shape
+        z_a = z_a - z_a.mean(dim=0)
+        z_b = z_b - z_b.mean(dim=0)
+        cov_z_a = ((z_a.T @ z_a) / (N - 1)).square()  # DxD
+        cov_z_b = ((z_b.T @ z_b) / (N - 1)).square()  # DxD
+
+        # simple eigen loss
+        # loss_e_a = torch.sum(torch.linalg.eigvals(cov_z_a)) / D
+        # loss_e_b = torch.sum(torch.linalg.eigvals(cov_z_b)) / D
+        # loss_eig = loss_e_a.real + loss_e_b.real
+
+        # eigen loss
+        eigvals_a = torch.linalg.eigvals(cov_z_a).real
+        eigvals_b = torch.linalg.eigvals(cov_z_b).real
+        # loss_eig = torch.sum(eigvals_a) + torch.sum(eigvals_b)
+        loss_eig = -torch.sum(torch.log(torch.cat((eigvals_a, eigvals_b), dim=0)))
+
+        # compute hinge loss
+        # eigvals_a = torch.linalg.eigvals(cov_z_a).real
+        # eigvals_b = torch.linalg.eigvals(cov_z_b).real
+        # loss_e_a = torch.mean(F.relu(self.hparams.gamma - eigvals_a)) # differentiable max(x,0)
+        # loss_e_b = torch.mean(F.relu(self.hparams.gamma - eigvals_b))
+        # loss_eig = loss_e_a + loss_e_b
+
+
+        # we want to minimize differences between the top and bottom eigenvalues
+        # diff_a = torch.sum(max(eigvals_a) - eigvals_a)
+        # diff_b = torch.sum(max(eigvals_b) - eigvals_b)
+        # total_diff = (diff_a + diff_b)/2
+
+        # print(max(eigvals_a).item(), min(eigvals_a).item())
+
+        weighted_inv = loss_inv * self.hparams.invariance_loss_weight
+        weighted_eig = loss_eig * self.hparams.eigen_loss_weight
+        # weighted_diff = total_diff * self.hparams.eigen_diff_weight
+        
+
+        # loss = weighted_inv + weighted_var + weighted_cov
+        # loss = weighted_inv + weighted_eig + weighted_diff
+        loss = weighted_inv + weighted_eig 
+
+        return {
+            "loss": loss,
+            "loss_invariance": weighted_inv,
+            "loss_eig": weighted_eig
+        }
+
+
     def forward(self, x):
         return self.model(x)
 
@@ -273,7 +328,10 @@ class SelfSupervisedMethod(pl.LightningModule):
         logits, labels = self._get_contrastive_predictions(q, k)
         if self.hparams.use_vicreg_loss:
             losses = self._get_vicreg_loss(q, k, batch_idx)
-            contrastive_loss = losses["loss"]
+            contrastive_loss = losses["loss"] 
+        elif self.hparams.use_eig_loss:
+            losses = self._get_eig_loss(q, k, batch_idx)
+            contrastive_loss = losses["loss"] 
         else:
             losses = {}
             contrastive_loss = self._get_contrastive_loss(logits, labels)

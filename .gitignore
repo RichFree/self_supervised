@@ -130,3 +130,8 @@ dmypy.json
 
 # PyCharm
 .idea/
+
+# misc
+stl10_binary.tar.gz
+stl10_binary/
+tb_logs/
