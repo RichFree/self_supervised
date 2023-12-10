@@ -18,6 +18,8 @@ from lars import LARS
 from model_params import ModelParams
 from sklearn.linear_model import LogisticRegression
 
+import pandas as pd
+
 
 def get_mlp_normalization(hparams: ModelParams, prediction=False):
     normalization_str = hparams.mlp_normalization
@@ -253,6 +255,20 @@ class SelfSupervisedMethod(pl.LightningModule):
 
         loss = weighted_inv + weighted_var + weighted_cov
 
+        # analyze eigenvalues of cov_z while training
+        eigvals_a = torch.linalg.eigvals(cov_z_a).real
+        eigvals_b = torch.linalg.eigvals(cov_z_b).real
+        # print(max(eigvals_a).item(), min(eigvals_a).item())
+        # print(max(eigvals_b).item(), min(eigvals_b).item())
+
+        data = pd.DataFrame(eigvals_a.cpu().detach().numpy())
+        data.T.to_csv("output_data/vicreg_za_eigenvals.csv",index=False,header=False,mode="a")
+
+        data = pd.DataFrame(eigvals_b.cpu().detach().numpy())
+        data.T.to_csv("output_data/vicreg_zb_eigenvals.csv",index=False,header=False,mode="a")
+
+
+
         return {
             "loss": loss,
             "loss_invariance": weighted_inv,
@@ -273,36 +289,34 @@ class SelfSupervisedMethod(pl.LightningModule):
         cov_z_a = ((z_a.T @ z_a) / (N - 1)).square()  # DxD
         cov_z_b = ((z_b.T @ z_b) / (N - 1)).square()  # DxD
 
-        # simple eigen loss
-        # loss_e_a = torch.sum(torch.linalg.eigvals(cov_z_a)) / D
-        # loss_e_b = torch.sum(torch.linalg.eigvals(cov_z_b)) / D
-        # loss_eig = loss_e_a.real + loss_e_b.real
+        # simple eigen loss (log sum)
+        # eigvals_a = torch.linalg.eigvalsh(cov_z_a).real
+        # eigvals_b = torch.linalg.eigvalsh(cov_z_b).real
+        # loss_eig = -torch.log(torch.mean(torch.cat((eigvals_a, eigvals_b), dim=0)))
 
-        # eigen loss
-        eigvals_a = torch.linalg.eigvals(cov_z_a).real
-        eigvals_b = torch.linalg.eigvals(cov_z_b).real
-        # loss_eig = torch.sum(eigvals_a) + torch.sum(eigvals_b)
-        loss_eig = -torch.sum(torch.log(torch.cat((eigvals_a, eigvals_b), dim=0)))
+        # sum of logs eigen loss
+        eigvals_a = torch.linalg.eigvalsh(cov_z_a).real
+        eigvals_b = torch.linalg.eigvalsh(cov_z_b).real
+        # idea is to drop the least contributing eigenvalues
+        # eigvalsh organizes in ascending order (least values first)
+        pos_floor = int(len(eigvals_a) * (1 - self.hparams.eigen_subset))
+        eigvals_a_subset = eigvals_a[pos_floor:]
+        eigvals_b_subset = eigvals_b[pos_floor:]
+        # renormalization factor
+        renorm = len(eigvals_a) / (len(eigvals_a) - len(eigvals_a_subset))
+        loss_eig = renorm * -torch.sum(torch.log(torch.cat((eigvals_a_subset, eigvals_b_subset), dim=0)))
 
-        # compute hinge loss
-        # eigvals_a = torch.linalg.eigvals(cov_z_a).real
-        # eigvals_b = torch.linalg.eigvals(cov_z_b).real
-        # loss_e_a = torch.mean(F.relu(self.hparams.gamma - eigvals_a)) # differentiable max(x,0)
-        # loss_e_b = torch.mean(F.relu(self.hparams.gamma - eigvals_b))
-        # loss_eig = loss_e_a + loss_e_b
-
-
-        # we want to minimize differences between the top and bottom eigenvalues
-        # diff_a = torch.sum(max(eigvals_a) - eigvals_a)
-        # diff_b = torch.sum(max(eigvals_b) - eigvals_b)
-        # total_diff = (diff_a + diff_b)/2
-
-        # print(max(eigvals_a).item(), min(eigvals_a).item())
 
         weighted_inv = loss_inv * self.hparams.invariance_loss_weight
         weighted_eig = loss_eig * self.hparams.eigen_loss_weight
         # weighted_diff = total_diff * self.hparams.eigen_diff_weight
-        
+         
+        data = pd.DataFrame(eigvals_a.cpu().detach().numpy())
+        data.T.to_csv("output_data/eigen_za_eigenvals.csv",index=False,header=False,mode="a")
+        data = pd.DataFrame(eigvals_b.cpu().detach().numpy())
+        data.T.to_csv("output_data/eigen_zb_eigenvals.csv",index=False,header=False,mode="a")
+
+
 
         # loss = weighted_inv + weighted_var + weighted_cov
         # loss = weighted_inv + weighted_eig + weighted_diff

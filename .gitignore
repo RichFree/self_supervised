@@ -135,3 +135,5 @@ dmypy.json
 stl10_binary.tar.gz
 stl10_binary/
 tb_logs/
+eigen_values.csv
+tb_archive/

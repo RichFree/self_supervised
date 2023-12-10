@@ -4,6 +4,8 @@ from typing import Any
 from typing import Callable
 from typing import Optional
 
+import pandas as pd
+
 import attr
 import torch
 import torchvision

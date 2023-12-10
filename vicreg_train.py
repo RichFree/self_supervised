@@ -7,9 +7,9 @@ from model_params import VICRegParams
 
 
 def main():
-    base_config = VICRegParams()
+    vicreg_config = VICRegParams()
     configs = {
-        "base": base_config,
+        "vicreg": vicreg_config,
         # "pred_only": evolve(base_config, mlp_normalization=None, prediction_mlp_normalization="bn"),
         # "proj_only": evolve(base_config, mlp_normalization="bn", prediction_mlp_normalization=None),
         # "no_norm": evolve(base_config, mlp_normalization=None),
@@ -23,7 +23,7 @@ def main():
             method = SelfSupervisedMethod(config)
             logger = TensorBoardLogger("tb_logs", name=f"{name}_{seed}")
 
-            trainer = pl.Trainer(accelerator="gpu", devices=1, max_epochs=10, logger=logger)
+            trainer = pl.Trainer(accelerator="gpu", devices=1, max_epochs=50, logger=logger)
 
             trainer.fit(method)
 
