@@ -264,8 +264,9 @@ class SelfSupervisedMethod(pl.LightningModule):
         data = pd.DataFrame(eigvals_a.cpu().detach().numpy())
         data.T.to_csv("output_data/vicreg_za_eigenvals.csv",index=False,header=False,mode="a")
 
-        data = pd.DataFrame(eigvals_b.cpu().detach().numpy())
-        data.T.to_csv("output_data/vicreg_zb_eigenvals.csv",index=False,header=False,mode="a")
+        data = pd.DataFrame(z_a.mean(dim=0).cpu().detach().numpy())
+        data.T.to_csv("output_data/vicreg_za_mean.csv",index=False,header=False,mode="a")
+
 
 
 
@@ -289,38 +290,31 @@ class SelfSupervisedMethod(pl.LightningModule):
         cov_z_a = ((z_a.T @ z_a) / (N - 1)).square()  # DxD
         cov_z_b = ((z_b.T @ z_b) / (N - 1)).square()  # DxD
 
-        # simple eigen loss (log sum)
+        # # simple eigen loss (log sum)
         # eigvals_a = torch.linalg.eigvalsh(cov_z_a).real
         # eigvals_b = torch.linalg.eigvalsh(cov_z_b).real
         # loss_eig = -torch.log(torch.mean(torch.cat((eigvals_a, eigvals_b), dim=0)))
-
-        # sum of logs eigen loss
-        eigvals_a = torch.linalg.eigvalsh(cov_z_a).real
-        eigvals_b = torch.linalg.eigvalsh(cov_z_b).real
-        # idea is to drop the least contributing eigenvalues
-        # eigvalsh organizes in ascending order (least values first)
-        pos_floor = int(len(eigvals_a) * (1 - self.hparams.eigen_subset))
-        eigvals_a_subset = eigvals_a[pos_floor:]
-        eigvals_b_subset = eigvals_b[pos_floor:]
-        # renormalization factor
-        renorm = len(eigvals_a) / (len(eigvals_a) - len(eigvals_a_subset))
-        loss_eig = renorm * -torch.sum(torch.log(torch.cat((eigvals_a_subset, eigvals_b_subset), dim=0)))
-
+        
+        # alternative is to use svd
+        eigvals_a = torch.linalg.svdvals(cov_z_a)
+        eigvals_b = torch.linalg.svdvals(cov_z_b)
+        # svdvals organizes in descending order (largest values first)
+        # we drop the most significant eigenvalues
+        start_index = int(len(eigvals_a) * (1 - self.hparams.eigen_subset))
+        eigvals_a_subset_small = eigvals_a[start_index:]
+        eigvals_b_subset_small = eigvals_b[start_index:]
+        loss_eig = -torch.sum(torch.log(torch.cat((eigvals_a_subset_small, eigvals_b_subset_small), dim=0)))
 
         weighted_inv = loss_inv * self.hparams.invariance_loss_weight
         weighted_eig = loss_eig * self.hparams.eigen_loss_weight
-        # weighted_diff = total_diff * self.hparams.eigen_diff_weight
          
-        data = pd.DataFrame(eigvals_a.cpu().detach().numpy())
-        data.T.to_csv("output_data/eigen_za_eigenvals.csv",index=False,header=False,mode="a")
-        data = pd.DataFrame(eigvals_b.cpu().detach().numpy())
-        data.T.to_csv("output_data/eigen_zb_eigenvals.csv",index=False,header=False,mode="a")
+        # data = pd.DataFrame(eigvals_a.cpu().detach().numpy())
+        # data.T.to_csv("output_data/eigen_za_eigenvals.csv",index=False,header=False,mode="a")
 
+        # data = pd.DataFrame(z_a.mean(dim=0).cpu().detach().numpy())
+        # data.T.to_csv("output_data/eigen_za_mean.csv",index=False,header=False,mode="a")
 
-
-        # loss = weighted_inv + weighted_var + weighted_cov
-        # loss = weighted_inv + weighted_eig + weighted_diff
-        loss = weighted_inv + weighted_eig 
+        loss = weighted_inv + weighted_eig
 
         return {
             "loss": loss,

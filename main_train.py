@@ -9,14 +9,10 @@ from model_params import VICRegParams
 
 def main():
     configs = {
-        "eigen": evolve(EigRegParams(), eigen_subset=70)
-        # "pred_only": evolve(base_config, mlp_normalization=None, prediction_mlp_normalization="bn"),
-        # "proj_only": evolve(base_config, mlp_normalization="bn", prediction_mlp_normalization=None),
-        # "no_norm": evolve(base_config, mlp_normalization=None),
-        # "layer_norm": evolve(base_config, mlp_normalization="ln"),
-        # "xent": evolve(
-        #     base_config, use_negative_examples_from_queue=True, loss_type="ce", mlp_normalization=None, lr=0.02
-        # ),
+        # "vicreg_320": VICRegParams(),
+        "eigen_320_subset_0.7": evolve(EigRegParams(), eigen_subset=0.7),
+        "eigen_320_subset_0.8": evolve(EigRegParams(), eigen_subset=0.8),
+        "eigen_320_subset_0.9": evolve(EigRegParams(), eigen_subset=0.9)
     }
     for seed in range(1):
         for name, config in configs.items():

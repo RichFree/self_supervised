@@ -23,7 +23,7 @@ def main():
             method = SelfSupervisedMethod(config)
             logger = TensorBoardLogger("tb_logs", name=f"{name}_{seed}")
 
-            trainer = pl.Trainer(accelerator="gpu", devices=1, max_epochs=50, logger=logger)
+            trainer = pl.Trainer(accelerator="gpu", devices=1, max_epochs=20, logger=logger)
 
             trainer.fit(method)
 

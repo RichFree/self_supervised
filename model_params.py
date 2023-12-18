@@ -61,8 +61,10 @@ class ModelParams:
     # EigReg
     use_eig_loss: bool = False
     eigen_loss_weight: float = 0.001 # use 0.001 for best result
-    eigen_diff_weight: float = 50
-    eigen_subset: int = 0.7 # 70 for default
+    # eigen_diff_weight: float = 50
+    eigen_subset: float = 1.0 # 0.7 next time
+    # eigen_uniform: float = 0.1
+    beta: float = 10
 
     # MLP parameters
     projection_mlp_layers: int = 2

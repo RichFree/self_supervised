@@ -137,3 +137,5 @@ stl10_binary/
 tb_logs/
 eigen_values.csv
 tb_archive/
+tb_archive_23-12-16/
+output_data/
