@@ -303,7 +303,8 @@ class SelfSupervisedMethod(pl.LightningModule):
         start_index = int(len(eigvals_a) * (1 - self.hparams.eigen_subset))
         eigvals_a_subset_small = eigvals_a[start_index:]
         eigvals_b_subset_small = eigvals_b[start_index:]
-        loss_eig = -torch.sum(torch.log(torch.cat((eigvals_a_subset_small, eigvals_b_subset_small), dim=0)))
+        loss_eig = (1 - self.hparams.naive_flag) * -torch.sum(torch.log(torch.cat((eigvals_a_subset_small, eigvals_b_subset_small), dim=0)))
+        loss_eig += (self.hparams.naive_flag) * -torch.log(torch.mean(torch.cat(eigvals_a_subset_small, eigvals_b_subset_small), dim=0))
 
         weighted_inv = loss_inv * self.hparams.invariance_loss_weight
         weighted_eig = loss_eig * self.hparams.eigen_loss_weight
@@ -377,7 +378,7 @@ class SelfSupervisedMethod(pl.LightningModule):
         if self.hparams.use_negative_examples_from_queue:
             self._dequeue_and_enqueue(k)
 
-        self.log_dict(log_data)
+        self.log_dict(log_data, sync_dist=True)
         return {"loss": contrastive_loss}
 
     def validation_step(self, batch, batch_idx):
@@ -403,7 +404,7 @@ class SelfSupervisedMethod(pl.LightningModule):
             "m": self._get_m(),
         }
         print(f"Epoch {self.current_epoch} accuracy: train: {train_accuracy:.1f}%, validation: {valid_accuracy:.1f}%")
-        self.log_dict(log_data)
+        self.log_dict(log_data, sync_dist=True)
 
     def configure_optimizers(self):
         # exclude bias and batch norm from LARS and weight decay

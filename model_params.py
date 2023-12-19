@@ -65,6 +65,7 @@ class ModelParams:
     eigen_subset: float = 1.0 # 0.7 next time
     # eigen_uniform: float = 0.1
     beta: float = 10
+    naive_flag: int = 0
 
     # MLP parameters
     projection_mlp_layers: int = 2
