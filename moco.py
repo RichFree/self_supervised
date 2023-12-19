@@ -304,7 +304,7 @@ class SelfSupervisedMethod(pl.LightningModule):
         eigvals_a_subset_small = eigvals_a[start_index:]
         eigvals_b_subset_small = eigvals_b[start_index:]
         loss_eig = (1 - self.hparams.naive_flag) * -torch.sum(torch.log(torch.cat((eigvals_a_subset_small, eigvals_b_subset_small), dim=0)))
-        loss_eig += (self.hparams.naive_flag) * -torch.log(torch.mean(torch.cat(eigvals_a_subset_small, eigvals_b_subset_small), dim=0))
+        loss_eig += (self.hparams.naive_flag) * -torch.log(torch.mean(torch.cat((eigvals_a_subset_small, eigvals_b_subset_small)), dim=0))
 
         weighted_inv = loss_inv * self.hparams.invariance_loss_weight
         weighted_eig = loss_eig * self.hparams.eigen_loss_weight
