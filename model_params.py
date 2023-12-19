@@ -80,6 +80,7 @@ class ModelParams:
     drop_last_batch: bool = True
     pin_data_memory: bool = True
     gather_keys_for_queue: bool = False
+    persistent_workers: bool = True
 
 
 # Differences between these parameters and those used in the paper (on image net):

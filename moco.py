@@ -499,6 +499,7 @@ class SelfSupervisedMethod(pl.LightningModule):
             num_workers=self.hparams.num_data_workers,
             pin_memory=self.hparams.pin_data_memory,
             drop_last=self.hparams.drop_last_batch,
+            persistent_workers=self.hparams.persistent_workers,
             shuffle=True,
         )
 
@@ -509,6 +510,7 @@ class SelfSupervisedMethod(pl.LightningModule):
             num_workers=self.hparams.num_data_workers,
             pin_memory=self.hparams.pin_data_memory,
             drop_last=self.hparams.drop_last_batch,
+            persistent_workers=self.hparams.persistent_workers,
         )
 
     @classmethod
